@@ -619,9 +619,15 @@ def run_6aside_next_matches():
     print('  saved %s' % out_path)
 
     caption = build_caption(matches)
-    print('  caption:\n%s' % caption)
-    make_story_version(out_path)   # build story locally to review
-    print('  [meta] posting DISABLED for testing - not posted.')
+    try:
+        feed_url, _ = upload_public_image(drive, out_path, POST_UPLOAD_FOLDER_ID)
+        print('  feed url: %s' % feed_url)
+        story_path = make_story_version(out_path)
+        story_url, _ = upload_public_image(drive, story_path, POST_UPLOAD_FOLDER_ID)
+        print('  story url: %s' % story_url)
+        post_to_meta(caption, image_url=feed_url, story_url=story_url)
+    except Exception as e:
+        errors.append('Meta posting failed: %s' % e)
 
     print('Done.')
     send_error_email(errors)
