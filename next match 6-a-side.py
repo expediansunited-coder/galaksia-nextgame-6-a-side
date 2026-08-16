@@ -391,6 +391,19 @@ def _ig_publish(ig_id, token, image_url, caption=None, is_story=False):
     c = requests.post('%s/%s/media' % (GRAPH, ig_id), data=data)
     c.raise_for_status()
     creation_id = c.json()['id']
+
+    # Wait for the container to be ready before publishing.
+    import time
+    for _ in range(10):
+        st = requests.get('%s/%s' % (GRAPH, creation_id),
+                          params={'fields': 'status_code', 'access_token': token})
+        code = st.json().get('status_code')
+        if code == 'FINISHED':
+            break
+        if code == 'ERROR':
+            raise RuntimeError('IG container error: %s' % st.text)
+        time.sleep(3)
+
     p = requests.post('%s/%s/media_publish' % (GRAPH, ig_id),
                       data={'creation_id': creation_id, 'access_token': token})
     p.raise_for_status()
