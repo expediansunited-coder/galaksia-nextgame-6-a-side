@@ -1,0 +1,45 @@
+name: 6-a-side Next Matches
+
+on:
+  schedule:
+    - cron: '0 8 * * 2'   # Tue 10:00 Prague in summer (CEST, UTC+2)
+    - cron: '0 9 * * 2'   # Tue 10:00 Prague in winter (CET, UTC+1)
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check it is 10:00 in Prague
+        id: gate
+        run: |
+          HOUR=$(TZ=Europe/Prague date +%H)
+          echo "Prague hour: $HOUR"
+          if [ "$HOUR" != "10" ]; then
+            echo "Not 10:00 Prague, skipping."
+            echo "proceed=false" >> $GITHUB_OUTPUT
+          else
+            echo "proceed=true" >> $GITHUB_OUTPUT
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.gate.outputs.proceed == 'true'
+
+      - uses: actions/setup-python@v5
+        if: steps.gate.outputs.proceed == 'true'
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        if: steps.gate.outputs.proceed == 'true'
+        run: pip install -r requirements.txt
+
+      - name: Write secret files
+        if: steps.gate.outputs.proceed == 'true'
+        run: |
+          echo '${{ secrets.GOOGLE_CREDENTIALS_JSON }}' > credentials.json
+          echo '${{ secrets.META_CONFIG_JSON }}' > meta_config.json
+
+      - name: Run script
+        if: steps.gate.outputs.proceed == 'true'
+        run: python "next match 6-a-side.py"
