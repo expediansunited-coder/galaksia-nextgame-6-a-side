@@ -409,12 +409,31 @@ def _ig_publish(ig_id, token, image_url, caption=None, is_story=False):
     p.raise_for_status()
     return p.json()
 
+def _get_page_token(page_id, user_token):
+    """Get the Page access token for a system-user token via me/accounts."""
+    r = requests.get('%s/me/accounts' % GRAPH,
+                     params={'access_token': user_token, 'limit': 200})
+    r.raise_for_status()
+    for p in r.json().get('data', []):
+        if str(p.get('id')) == str(page_id):
+            return p['access_token']
+    raise RuntimeError('Page %s not found in me/accounts' % page_id)
+
 def post_to_meta(caption, image_url=None, story_url=None):
     cfg = load_meta_config()
-    page_id = cfg['page_id']; ig_id = cfg['ig_user_id']; token = cfg['page_access_token']
+    page_id = cfg['page_id']; ig_id = cfg['ig_user_id']
+    user_token = cfg['page_access_token']  # system-user token in config
     if not image_url:
         print('    [meta] ERROR: no public image_url; cannot post.')
         return
+
+    # FB Page posting needs a Page token; IG uses the user/system-user token.
+    try:
+        token = _get_page_token(page_id, user_token)  # Page token for FB
+    except Exception as e:
+        print('    [meta] could not derive Page token: %s' % e)
+        token = user_token
+    ig_token = user_token
     try:
         _fb_page_photo(page_id, token, image_url, caption, published=True)
         print('    [meta] FB feed OK')
@@ -427,12 +446,13 @@ def post_to_meta(caption, image_url=None, story_url=None):
     except Exception as e:
         print('    [meta] FB story FAILED: %s' % e)
     try:
-        _ig_publish(ig_id, token, image_url, caption=caption, is_story=False)
+        _ig_publish(ig_id, ig_token, image_url, caption=caption, is_story=False)
         print('    [meta] IG feed OK')
     except Exception as e:
         print('    [meta] IG feed FAILED: %s' % e)
+
     try:
-        _ig_publish(ig_id, token, story_url or image_url, is_story=True)
+        _ig_publish(ig_id, ig_token, story_url or image_url, is_story=True)
         print('    [meta] IG story OK')
     except Exception as e:
         print('    [meta] IG story FAILED: %s' % e)
