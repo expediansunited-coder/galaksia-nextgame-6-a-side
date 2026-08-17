@@ -26,7 +26,7 @@ from googleapiclient.http import MediaFileUpload
 # CONFIG
 # ============================================================
 CREDENTIALS_FILE = 'credentials.json'
-META_CONFIG_FILE = 'meta_config.json'   # point this at the 6-a-side page later
+META_CONFIG_FILE = 'meta_config_6aside.json'   # point this at the 6-a-side page later
 
 FIXTURES_SHEET_ID = '1j6ZN3N8aXnB9vKFdWeXhY-fyo8aH1JlmhWZWHwzgu-E'
 FRIENDLY_TAB = 'Friendly Fixtures'
