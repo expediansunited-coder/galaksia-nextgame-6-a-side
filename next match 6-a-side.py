@@ -15,7 +15,12 @@ except Exception as _e:
     print('  [heic] pillow-heif not available: %s' % _e)
 
 import json
+import time
 import requests
+from google.oauth2.credentials import Credentials
+from google.auth.transport.requests import Request
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.http import MediaFileUpload
 
 # ============================================================
 # CONFIG
@@ -90,6 +95,22 @@ def get_gspread_client():
 def get_drive_service():
     return build('drive', 'v3', credentials=get_creds())
 
+USER_SCOPES = ['https://www.googleapis.com/auth/drive']
+
+def get_user_drive_service(client_secrets_file='client_secret.json'):
+    creds = None
+    if os.path.exists('token.json'):
+        creds = Credentials.from_authorized_user_file('token.json', USER_SCOPES)
+    if not creds or not creds.valid:
+        if creds and creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            flow = InstalledAppFlow.from_client_secrets_file(client_secrets_file, USER_SCOPES)
+            creds = flow.run_local_server(port=0)
+        with open('token.json', 'w') as token:
+            token.write(creds.to_json())
+    return build('drive', 'v3', credentials=creds)
+
 # ============================================================
 # NORMALIZE / MATCH
 # ============================================================
@@ -120,17 +141,24 @@ def list_folder(drive, folder_id):
 def download_bytes(drive, file_id):
     return drive.files().get_media(fileId=file_id).execute()
 
-def upload_public_image(drive, image_path, folder_id=None):
-    with open(image_path, 'rb') as fh:
-        r = requests.post(
-            'https://catbox.moe/user/api.php',
-            data={'reqtype': 'fileupload'},
-            files={'fileToUpload': (os.path.basename(image_path), fh, 'image/png')})
-    r.raise_for_status()
-    url = r.text.strip()
-    if not url.startswith('http'):
-        raise RuntimeError('catbox upload failed: %s' % url)
-    return url, None
+def upload_public_image(drive, image_path, folder_id):
+    """Upload to the user's Drive folder, make public, return (url, file_id)."""
+    last_err = None
+    file_metadata = {'name': os.path.basename(image_path), 'parents': [folder_id]}
+    media = MediaFileUpload(image_path, mimetype='image/png', resumable=True)
+    for attempt in range(4):
+        try:
+            f = drive.files().create(body=file_metadata, media_body=media,
+                                     fields='id').execute()
+            file_id = f['id']
+            drive.permissions().create(
+                fileId=file_id, body={'type': 'anyone', 'role': 'reader'}).execute()
+            url = 'https://drive.google.com/uc?id=%s&export=download' % file_id
+            return url, file_id
+        except Exception as e:
+            last_err = str(e)
+            time.sleep(5 * (attempt + 1))
+    raise RuntimeError('Google Drive image upload failed after retries: %s' % last_err)
 
 def find_by_basename(files, name):
     target = _norm(name)
@@ -532,6 +560,7 @@ def run_6aside_next_matches():
     print('Auth...')
     client = get_gspread_client()
     drive = get_drive_service()
+    user_drive = get_user_drive_service()
 
     team_league = build_team_league_map(client)
 
@@ -652,15 +681,24 @@ def run_6aside_next_matches():
     print('  saved %s' % out_path)
 
     caption = build_caption(matches)
+    feed_id = story_id = None
     try:
-        feed_url, _ = upload_public_image(drive, out_path, POST_UPLOAD_FOLDER_ID)
+        feed_url, feed_id = upload_public_image(user_drive, out_path, POST_UPLOAD_FOLDER_ID)
         print('  feed url: %s' % feed_url)
         story_path = make_story_version(out_path)
-        story_url, _ = upload_public_image(drive, story_path, POST_UPLOAD_FOLDER_ID)
+        story_url, story_id = upload_public_image(user_drive, story_path, POST_UPLOAD_FOLDER_ID)
         print('  story url: %s' % story_url)
         post_to_meta(caption, image_url=feed_url, story_url=story_url)
     except Exception as e:
         errors.append('Meta posting failed: %s' % e)
+    finally:
+        for fid in (feed_id, story_id):
+            if fid:
+                try:
+                    user_drive.files().delete(fileId=fid).execute()
+                    print('  deleted temp Drive file %s' % fid)
+                except Exception as e:
+                    print('  could not delete %s: %s' % (fid, e))
 
     print('Done.')
     send_error_email(errors)
