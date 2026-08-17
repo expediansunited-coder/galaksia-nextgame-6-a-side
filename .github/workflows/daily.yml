@@ -23,7 +23,7 @@ jobs:
       - name: Write secret files
         run: |
           echo '${{ secrets.CREDENTIALS_JSON }}' > credentials.json
-          echo '${{ secrets.META_CONFIG_JSON }}' > meta_config.json
+          echo '${{ secrets.META_CONFIG_6ASIDE_JSON }}' > meta_config_6aside.json
           echo '${{ secrets.TOKEN_JSON }}' > token.json
           echo '${{ secrets.CLIENT_SECRET_JSON }}' > client_secret.json
 
