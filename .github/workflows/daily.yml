@@ -24,6 +24,8 @@ jobs:
         run: |
           echo '${{ secrets.CREDENTIALS_JSON }}' > credentials.json
           echo '${{ secrets.META_CONFIG_JSON }}' > meta_config.json
+          echo '${{ secrets.TOKEN_JSON }}' > token.json
+          echo '${{ secrets.CLIENT_SECRET_JSON }}' > client_secret.json
 
       - name: Run script
         run: python "next match 6-a-side.py"
