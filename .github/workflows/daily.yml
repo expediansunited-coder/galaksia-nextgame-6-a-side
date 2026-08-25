@@ -39,7 +39,8 @@ jobs:
           git config user.email "actions@github.com"
           git add output/*.png
           git commit -m "Add generated match images" || echo "nothing to commit"
-          git pull --rebase origin main
+          git fetch origin main
+          git rebase origin/main
           git push origin HEAD:main
 
       - name: Post to Meta
@@ -49,5 +50,6 @@ jobs:
         run: |
           git rm -f output/*.png || echo "nothing to remove"
           git commit -m "Clean up generated images" || echo "nothing to commit"
-          git pull --rebase origin main
+          git fetch origin main
+          git rebase origin/main
           git push origin HEAD:main
