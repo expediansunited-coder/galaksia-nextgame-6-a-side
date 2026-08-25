@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -38,7 +40,7 @@ jobs:
           git add output/*.png
           git commit -m "Add generated match images" || echo "nothing to commit"
           git pull --rebase origin main
-          git push
+          git push origin HEAD:main
 
       - name: Post to Meta
         run: python "next match 6-a-side.py" --post-only
@@ -48,4 +50,4 @@ jobs:
           git rm -f output/*.png || echo "nothing to remove"
           git commit -m "Clean up generated images" || echo "nothing to commit"
           git pull --rebase origin main
-          git push
+          git push origin HEAD:main
