@@ -681,24 +681,19 @@ def run_6aside_next_matches():
     print('  saved %s' % out_path)
 
     caption = build_caption(matches)
-    feed_id = story_id = None
     try:
-        feed_url, feed_id = upload_public_image(user_drive, out_path, POST_UPLOAD_FOLDER_ID)
-        print('  feed url: %s' % feed_url)
         story_path = make_story_version(out_path)
-        story_url, story_id = upload_public_image(user_drive, story_path, POST_UPLOAD_FOLDER_ID)
+
+        # Public raw URLs (repo is public). Files are committed by the workflow.
+        repo_raw = 'https://raw.githubusercontent.com/expediansunited-coder/galaksia-nextgame-6-a-side/main/'
+        feed_url = repo_raw + out_path.replace('\\', '/')
+        story_url = repo_raw + story_path.replace('\\', '/')
+        print('  feed url: %s' % feed_url)
         print('  story url: %s' % story_url)
+
         post_to_meta(caption, image_url=feed_url, story_url=story_url)
     except Exception as e:
         errors.append('Meta posting failed: %s' % e)
-    finally:
-        for fid in (feed_id, story_id):
-            if fid:
-                try:
-                    user_drive.files().delete(fileId=fid).execute()
-                    print('  deleted temp Drive file %s' % fid)
-                except Exception as e:
-                    print('  could not delete %s: %s' % (fid, e))
 
     print('Done.')
     send_error_email(errors)
