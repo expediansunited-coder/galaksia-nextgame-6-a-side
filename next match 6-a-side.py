@@ -560,7 +560,6 @@ def run_6aside_next_matches():
     print('Auth...')
     client = get_gspread_client()
     drive = get_drive_service()
-    user_drive = get_user_drive_service()
 
     team_league = build_team_league_map(client)
 
@@ -681,23 +680,33 @@ def run_6aside_next_matches():
     print('  saved %s' % out_path)
 
     caption = build_caption(matches)
-    try:
-        story_path = make_story_version(out_path)
+    story_path = make_story_version(out_path)
 
-        # Public raw URLs (repo is public). Files are committed by the workflow.
+    if POST_ONLY:
+        # Files were already committed to the public repo by the workflow.
         repo_raw = 'https://raw.githubusercontent.com/expediansunited-coder/galaksia-nextgame-6-a-side/main/'
         feed_url = repo_raw + out_path.replace('\\', '/')
         story_url = repo_raw + story_path.replace('\\', '/')
         print('  feed url: %s' % feed_url)
         print('  story url: %s' % story_url)
-
-        post_to_meta(caption, image_url=feed_url, story_url=story_url)
-    except Exception as e:
-        errors.append('Meta posting failed: %s' % e)
+        try:
+            post_to_meta(caption, image_url=feed_url, story_url=story_url)
+        except Exception as e:
+            errors.append('Meta posting failed: %s' % e)
+    else:
+        print('  generate-only: images saved, not posting.')
 
     print('Done.')
     send_error_email(errors)
 
+
+import sys
+GENERATE_ONLY = '--generate-only' in sys.argv
+POST_ONLY = '--post-only' in sys.argv
+if not GENERATE_ONLY and not POST_ONLY:
+    # No flag = do everything (useful for manual local runs).
+    GENERATE_ONLY = True
+    POST_ONLY = True
 
 if __name__ == '__main__':
     run_6aside_next_matches()
