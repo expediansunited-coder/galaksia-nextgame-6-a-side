@@ -5,6 +5,9 @@ on:
     - cron: '0 8 * * 2'   # Tue ~10:00 Prague summer / 09:00 winter
   workflow_dispatch:
 
+permissions:
+  contents: write        # allow the workflow to commit the images back
+
 jobs:
   run:
     runs-on: ubuntu-latest
@@ -24,8 +27,17 @@ jobs:
         run: |
           echo '${{ secrets.CREDENTIALS_JSON }}' > credentials.json
           echo '${{ secrets.META_CONFIG_6ASIDE_JSON }}' > meta_config_6aside.json
-          echo '${{ secrets.TOKEN_JSON }}' > token.json
-          echo '${{ secrets.CLIENT_SECRET_JSON }}' > client_secret.json
 
-      - name: Run script
-        run: python "next match 6-a-side.py"
+      - name: Generate images
+        run: python "next match 6-a-side.py" --generate-only
+
+      - name: Commit generated images
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add output/*.png
+          git commit -m "Add generated match images" || echo "nothing to commit"
+          git push
+
+      - name: Post to Meta
+        run: python "next match 6-a-side.py" --post-only
