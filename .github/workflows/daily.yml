@@ -2,7 +2,7 @@ name: 6-a-side Next Matches
 
 on:
   schedule:
-    - cron: '0 8 * * 2'   # Tue ~10:00 Prague summer / 09:00 winter
+    - cron: '17 8 * * 2'   # Tue ~10:00 Prague summer / 09:00 winter
   workflow_dispatch:
 
 permissions:
