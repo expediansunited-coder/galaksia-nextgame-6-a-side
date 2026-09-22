@@ -274,6 +274,20 @@ def build_image(bg_src, font_path, matches, league_logos):
         bg = bg.resize((CANVAS_W, CANVAS_H))
     draw = ImageDraw.Draw(bg)
 
+    def draw_left_center_y(text, x, cy, font, fill):
+        bbox = draw.textbbox((0, 0), text, font=font)
+        h = bbox[3] - bbox[1]
+        y = cy - h / 2 - bbox[1]
+        draw.text((x, y), text, font=font, fill=fill)
+
+    def draw_center_center_y(text, cx, cy, font, fill):
+        bbox = draw.textbbox((0, 0), text, font=font)
+        w = bbox[2] - bbox[0]
+        h = bbox[3] - bbox[1]
+        x = cx - w / 2 - bbox[0]
+        y = cy - h / 2 - bbox[1]
+        draw.text((x, y), text, font=font, fill=fill)
+
     n = len(matches)
     slot_h = (BAND_BOTTOM - BAND_TOP) / n
     info_font = load_font(font_path, INFO_SIZE)
@@ -336,17 +350,13 @@ def build_image(bg_src, font_path, matches, league_logos):
         if text_w(draw, opp, match_font) > opp_max_w:
             opp_font = fit_font_to_width(font_path, opp, opp_max_w, MATCH_SIZE)
 
-        # Draw GP label (left-anchored at MATCHUP_LEFT_X)
-        draw.text((MATCHUP_LEFT_X, line2_y), gp, font=gp_font, fill=WHITE)
+        # Common vertical center for GP label, x, and opponent.
+        # This keeps different font sizes aligned by their center axis.
+        matchup_cy = line2_y + int(MATCH_SIZE * 0.45)
 
-        # Draw the "x" centred at X_MARK_CX, vertically aligned with line2
-        xw = text_w(draw, 'x', x_font)
-        # nudge x down a touch to sit on the baseline of the big text
-        x_y = int(line2_y + MATCH_SIZE * 0.28)
-        draw.text((int(X_MARK_CX - xw / 2), x_y), 'x', font=x_font, fill=WHITE)
-
-        # Draw opponent (left-anchored at OPP_START_X)
-        draw.text((OPP_START_X, line2_y), opp, font=opp_font, fill=WHITE)
+        draw_left_center_y(gp, MATCHUP_LEFT_X, matchup_cy, gp_font, WHITE)
+        draw_center_center_y('x', X_MARK_CX, matchup_cy, x_font, WHITE)
+        draw_left_center_y(opp, OPP_START_X, matchup_cy, opp_font, WHITE)
 
     return bg.convert('RGB')
 
